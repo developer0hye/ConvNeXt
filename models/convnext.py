@@ -5,7 +5,6 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -25,7 +24,7 @@ class Block(nn.Module):
     """
     def __init__(self, dim, drop_path=0., layer_scale_init_value=1e-6):
         super().__init__()
-        self.dwconv = nn.Conv2d(dim, dim, kernel_size=7, padding=3, groups=dim) # depthwise conv
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=3, padding=1, groups=dim) # depthwise conv
         self.norm = LayerNorm(dim, eps=1e-6)
         self.pwconv1 = nn.Linear(dim, 4 * dim) # pointwise/1x1 convs, implemented with linear layers
         self.act = nn.GELU()
@@ -71,14 +70,13 @@ class ConvNeXt(nn.Module):
         self.downsample_layers = nn.ModuleList() # stem and 3 intermediate downsampling conv layers
         stem = nn.Sequential(
             nn.Conv2d(in_chans, dims[0], kernel_size=8, stride=8),
-            LayerNorm(dims[0], eps=1e-6, data_format="channels_first"),
-            nn.Conv2d(dims[0], dims[1], kernel_size=1, stride=1, padding=0)
+            LayerNorm(dims[0], eps=1e-6, data_format="channels_first")
         )
         self.downsample_layers.append(stem)
         for i in range(2):
             downsample_layer = nn.Sequential(
-                    LayerNorm(dims[i+1], eps=1e-6, data_format="channels_first"),
-                    nn.Conv2d(dims[i+1], dims[i+2], kernel_size=2, stride=2),
+                    LayerNorm(dims[i], eps=1e-6, data_format="channels_first"),
+                    nn.Conv2d(dims[i], dims[i+1], kernel_size=2, stride=2),
             )
             self.downsample_layers.append(downsample_layer)
 
@@ -87,7 +85,7 @@ class ConvNeXt(nn.Module):
         cur = 0
         for i in range(3):
             stage = nn.Sequential(
-                *[Block(dim=dims[i+1], drop_path=dp_rates[cur + j], 
+                *[Block(dim=dims[i], drop_path=dp_rates[cur + j], 
                 layer_scale_init_value=layer_scale_init_value) for j in range(depths[i])]
             )
             self.stages.append(stage)
@@ -144,25 +142,25 @@ class LayerNorm(nn.Module):
 
 @register_model
 def convnext_nano_tiny(pretrained=False, **kwargs):
-    model = ConvNeXt(depths=[1, 3, 3], dims=[64, 128, 256, 512], **kwargs)
+    model = ConvNeXt(depths=[1, 3, 3], dims=[64, 256, 512], **kwargs)
     return model
 
 @register_model
 def convnext_nano_small(pretrained=False, **kwargs):
-    model = ConvNeXt(depths=[3, 3, 3], dims=[64, 128, 256, 512], **kwargs)
+    model = ConvNeXt(depths=[3, 3, 3], dims=[64, 256, 512], **kwargs)
     return model
 
 @register_model
 def convnext_nano_base(pretrained=False, **kwargs):
-    model = ConvNeXt(depths=[3, 6, 3], dims=[64, 128, 256, 512], **kwargs)
+    model = ConvNeXt(depths=[3, 6, 3], dims=[64, 256, 512], **kwargs)
     return model
 
 @register_model
 def convnext_nano_large(pretrained=False, **kwargs):
-    model = ConvNeXt(depths=[3, 9, 3], dims=[64, 128, 256, 512], **kwargs)
+    model = ConvNeXt(depths=[3, 9, 3], dims=[64, 256, 512], **kwargs)
     return model
 
 @register_model
 def convnext_nano_xlarge(pretrained=False, **kwargs):
-    model = ConvNeXt(depths=[3, 9, 3], dims=[96, 192, 384, 768], **kwargs)
+    model = ConvNeXt(depths=[3, 9, 3], dims=[96, 384, 768], **kwargs)
     return model
